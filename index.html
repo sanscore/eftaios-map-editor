@@ -7,13 +7,11 @@
   <body>
 
   <div id="container">
-    <div id="cols">
-    </div>
     <div id="drawing"></div>
   </div>
     <style type="text/css">
-#cols div {
-  display: inline;
+div {
+  display: inline-block;
 }
 svg text{
    -webkit-user-select: none;
@@ -23,6 +21,101 @@ svg text{
 }
     </style>
     <script>
+
+var dragging = false
+function makeDraggable(evt) {
+  var svg = evt.target;
+  svg.addEventListener('mousedown', startDrag);
+  svg.addEventListener('mousemove', drag);
+  svg.addEventListener('mouseup', endDrag);
+  svg.addEventListener('mouseleave', endDrag);
+
+  function getMousePosition(evt) {
+    var CTM = svg.getScreenCTM();
+    return {
+      x: (evt.clientX - CTM.e) / CTM.a,
+      y: (evt.clientY - CTM.f) / CTM.d
+    };
+  }
+
+  var selectedElement, offset, origin;
+
+  function startDrag(evt) {
+    var draggable;
+    if (evt.target.classList.contains('draggable')) {
+      draggable = evt.target
+    } else if (evt.target.parentNode && evt.target.parentNode.classList.contains('draggable')) {
+      draggable = evt.target.parentNode
+    }
+
+    if (draggable != null) {
+      var child = draw.select(`#${draggable.id}`).first()
+      parent = child.parent()
+
+      if (
+           (parent == legend_human && human_hex)
+        || (parent == legend_alien && alien_hex)
+        || (parent == legend_pod1 && pod1_hex)
+        || (parent == legend_pod2 && pod2_hex)
+        || (parent == legend_pod3 && pod3_hex)
+        || (parent == legend_pod4 && pod4_hex)
+      ){ return; }
+      selectedElement = parent
+
+      parent.front();
+      origin = {x: selectedElement.x(), y: selectedElement.y()}
+      offset = getMousePosition(evt);
+      dragging = true
+    }
+  }
+
+  function drag(evt) {
+    if (selectedElement) {
+      evt.preventDefault();
+      var coord = getMousePosition(evt);
+      selectedElement.dmove(coord.x - offset.x, coord.y - offset.y);
+      selectedElement.front();
+      offset = coord;
+    }
+  }
+
+  function endDrag(evt) {
+    if (selectedElement) {
+      selectedElement.move(origin.x, origin.y);
+
+      let dx = evt.pageX - drawing.offsetLeft
+      let dy = evt.pageY - drawing.offsetTop
+      const hexCoordinates = Grid.pointToHex([dx - grid_offset_x, dy - grid_offset_y])
+      const hex = grid.get(hexCoordinates)
+
+      if (hex != null) {
+        nullifyHex(hex);
+        switch(selectedElement){
+          case legend_human:
+            hex.human()
+            break;
+          case legend_alien:
+            hex.alien()
+            break;
+          case legend_pod1:
+            hex.pod1()
+            break;
+          case legend_pod2:
+            hex.pod2()
+            break;
+          case legend_pod3:
+            hex.pod3()
+            break;
+          case legend_pod4:
+            hex.pod4()
+            break;
+        }
+      }
+    }
+    selectedElement = null;
+    dragging = false
+  }
+}
 
 const xpos = [
   "A", "B", "C", "D", "E", "F",
@@ -37,34 +130,53 @@ const ypos = [
   "13", "14",
 ]
 
-const draw_cols = SVG('cols').size(25 * 35 + 2, 20)
 
+const grid_offset_x = 0
+const grid_offset_y = 20
+
+const hex_size = 25
+const grid_hex_width = 23
+const grid_hex_height = 14
+
+const sqrt3 = Math.sqrt(3)
+const padding = 2
+const grid_px_width = (hex_size/2) * (grid_hex_width*3+1) + padding
+const grid_px_height = hex_size * sqrt3 * (grid_hex_height + 0.5) + padding
+
+const footer_top = grid_offset_y + grid_px_height + 2*padding
+const footer_height = 100
+
+const drawing_width = grid_offset_x + grid_px_width
+const drawing_height = grid_offset_y + grid_px_height + footer_height
+
+const drawing = document.getElementById('drawing')
+const draw = SVG(drawing).size(drawing_width, drawing_height)
+
+draw.on('load', (evt) => { makeDraggable(evt);})
+
+cols = draw.group().id('cols')
 for(let i = 0, j = 32; i < xpos.length; ++i, j+=37.5) { 
-  draw_cols
+  // TODO: move text/font details to a style
+  cols
     .text(xpos[i])
     .font({
-        family: 'Share Tech Mono'
+      family: 'Share Tech Mono'
       , size: 16
       , anchor: 'middle'
-      , fill: '#000'
+      , fill: '#838383'
     })
     .center(j, 8)
 }
-
-const grid_width = 23
-const grid_height = 14
-const hex_size = 25
-
-const sq3 = Math.sqrt(3)
-const drawing = document.getElementById('drawing')
-const draw = SVG(drawing).size(hex_size * 35 + 2, hex_size * 14.5 * sq3 + 2)
 
 const diagnol_pattern = draw.pattern(24, 24, function(add) {
   add.line(11, -1, 36, 24).stroke({ color: '#838383', width: 1 })
   add.line(-1, 11, 24, 36).stroke({ color: '#838383', width: 1 })
 })
 
-draw.rect(draw.width(), draw.height()).fill(diagnol_pattern)
+draw.rect(grid_px_width, grid_px_height)
+  .fill(diagnol_pattern)
+  .move(grid_offset_x, grid_offset_y)
+  .id('grid')
 
 const htype = {
   NONE: 'none',
@@ -97,7 +209,7 @@ const Hex = Honeycomb.extendHex({
   },
 
   setPolygon(symbol, text) {
-    const {x, y} = this.toPoint()
+    const {x, y} = this.toPoint().add(grid_offset_x, grid_offset_y)
 
     if (this.polygon != null) {
       this.polygon.remove()
@@ -105,19 +217,24 @@ const Hex = Honeycomb.extendHex({
 
     if (symbol != null) {
       this.polygon = symbol.clone()
-        .on('click', () => { console.log(this) })
         .translate(x, y)
         .show()
+        .on('mouseenter', () => { 
+          if(!dragging) {
+            this.polygon.front().animate(500).scale(1.2)
+          }
+        })
+        .on('mouseleave', () => { 
+          this.polygon.stop(true, true).animate(250).scale(1)
+        })
 
       if (text) {
         t = this.polygon.select('text')
 
         if (t != null && t.length() > 0) {
-          t0 = t.get(0).text(text)
+          t.first().text(text)
         }
       }
-
-      this.polygon.front().stop(true, true).animate(0).scale(1.4).reverse()
     }
     return this.polygon
   },
@@ -125,7 +242,7 @@ const Hex = Honeycomb.extendHex({
   blank() {
     this.type = htype.NONE
 
-    this.setPolygon(blank_sym)
+    this.setPolygon()
   },
 
   silent() {
@@ -141,74 +258,38 @@ const Hex = Honeycomb.extendHex({
   },
 
   human() {
-    this.type = htype.HUMAN
-
-    if (human_hex != null) {
-      this.alien()
-      return
-    }
     human_hex = this
-
+    this.type = htype.HUMAN
     this.setPolygon(human_sym)
   },
 
   alien() {
-    this.type = htype.ALIEN
-
-    if (alien_hex != null) {
-      this.pod1()
-      return
-    }
     alien_hex = this
-
+    this.type = htype.ALIEN
     this.setPolygon(alien_sym)
   },
 
   pod1() {
-    this.type = htype.POD1
-
-    if (pod1_hex != null) {
-      this.pod2()
-      return
-    }
     pod1_hex = this
-
+    this.type = htype.POD1
     this.setPolygon(pod_sym, `1`)
   },
 
   pod2() {
-    this.type = htype.POD2
-
-    if (pod2_hex != null) {
-      this.pod3()
-      return
-    }
     pod2_hex = this
-
+    this.type = htype.POD2
     this.setPolygon(pod_sym, `2`)
   },
 
   pod3() {
-    this.type = htype.POD3
-
-    if (pod3_hex != null) {
-      this.pod4()
-      return
-    }
     pod3_hex = this
-
+    this.type = htype.POD3
     this.setPolygon(pod_sym, `3`)
   },
 
   pod4() {
-    this.type = htype.POD4
-
-    if (pod4_hex != null) {
-      this.blank()
-      return
-    }
     pod4_hex = this
-
+    this.type = htype.POD4
     this.setPolygon(pod_sym, `4`)
   },
 
@@ -221,108 +302,176 @@ const xh = Grid.Hex()
 const xh_pos = xh.toPoint()
 const xh_center = xh.center().add(xh_pos)
 
-blank_sym = draw.group()
-blank_sym.polygon(xh.corners().map(({ x, y }) => `${x},${y}`))
-  .translate(1,1)
-  .fill({opacity: 1, color: 'none'})
-blank_sym.hide()
-
-silent_sym = draw.group()
+silent_sym = draw.group().id('silent')
 silent_sym.polygon(xh.corners().map(({ x, y }) => `${x},${y}`))
   .translate(1,1)
   .fill({opacity: 1, color: '#fff'})
   .stroke({ width: 2, color: '#838383' })
+  .addClass('highlight')
 tx = silent_sym.text('A01')
-      .font({
-          family: 'Share Tech Mono'
-        , size: 16
-        , anchor: 'middle'
-        , leading: 1.4
-        , fill: '#000'
-      })
-      .center(40,23)
+  .font({
+    family: 'Share Tech Mono'
+    , size: 16
+    , anchor: 'middle'
+    , leading: 1.4
+    , fill: '#000'
+  })
+  .center(40,23)
 silent_sym.hide()
 
-danger_sym = draw.group()
+danger_sym = draw.group().id('danger')
 danger_sym.polygon(xh.corners().map(({ x, y }) => `${x},${y}`))
   .translate(1,1)
   .fill('#838383')
   .stroke({width: 2, color: '#838383'})
 danger_sym.polygon([
-  [4,0],      [6,0],      [7,sq3],    [9,sq3],   [10,sq3*2],
-  [9,sq3*3],  [10,sq3*4], [9,sq3*5],  [7,sq3*5], [6,sq3*6],
-  [4, sq3*6], [3,sq3*5],  [1, sq3*5], [0,sq3*4], [1,sq3*3],
-  [0,sq3*2],  [1,sq3],    [3,sq3]
+  [4,0],      [6,0],      [7,sqrt3],    [9,sqrt3],   [10,sqrt3*2],
+  [9,sqrt3*3],  [10,sqrt3*4], [9,sqrt3*5],  [7,sqrt3*5], [6,sqrt3*6],
+  [4, sqrt3*6], [3,sqrt3*5],  [1, sqrt3*5], [0,sqrt3*4], [1,sqrt3*3],
+  [0,sqrt3*2],  [1,sqrt3],    [3,sqrt3]
 ])
   .translate(1,1)
   .fill('#ddd')
   .size(38)
   .center(xh_center.x,xh_center.y)
+  .addClass('highlight')
 danger_sym.text('A01')
-      .font({
-          family: 'Share Tech Mono'
-        , size: 16
-        , anchor: 'middle'
-        , leading: 1.4
-        , fill: '#000'
-      })
-      .center(40,23)
+  .font({
+    family: 'Share Tech Mono'
+    , size: 16
+    , anchor: 'middle'
+    , leading: 1.4
+    , fill: '#000'
+  })
+  .center(40,23)
 danger_sym.hide()
 
-human_sym = draw.group()
+human_sym = draw.group().id('human')
 human_sym.polygon(xh.corners().map(({ x, y }) => `${x},${y}`))
   .translate(1,1)
   .fill({opacity: 1, color: '#000'})
   .stroke({ width: 2, color: '#838383' })
+  .addClass('highlight')
+  .addClass("draggable")
 human_sym.path("M18 7 L13 10 V30 L25 38 L37 30 V10 L32 7")
   .translate(1,1)
   .fill('none')
   .stroke({width:3, color:'#fff'})
+  .addClass("draggable")
 human_sym.path("M13 18 L25 25 L37 18")
   .translate(1,1)
   .fill('none')
   .stroke({width:3, color:'#fff'})
+  .addClass("draggable")
 human_sym.hide()
 
-alien_sym = draw.group()
+alien_sym = draw.group().id('alien')
 alien_sym.polygon(xh.corners().map(({ x, y }) => `${x},${y}`))
   .translate(1,1)
   .fill({opacity: 1, color: '#000'})
   .stroke({ width: 2, color: '#838383' })
+  .addClass('highlight')
+  .addClass("draggable")
 alien_sym.path("M13 7 L37 20 V34 L25 27 L13 34 V20 L37 7")
   .translate(1,1)
   .fill('none')
   .stroke({width:3, color:'#fff'})
+  .addClass("draggable")
 alien_sym.hide()
 
-pod_sym = draw.group()
+pod_sym = draw.group('pod')
 pod_sym.polygon(xh.corners().map(({ x, y }) => `${x},${y}`))
   .translate(1,1)
   .fill({opacity: 1, color: '#000'})
   .stroke({ width: 2, color: '#838383' })
+  .addClass('highlight')
+  .addClass("draggable")
 pod_sym.path("M32 5 H16 L8.5 18")
   .translate(1,1)
   .fill('none')
   .stroke({width:3, color:'#fff'})
+  .addClass("draggable")
 pod_sym.path("M18 38 H34 L41.5 25")
   .translate(1,1)
   .fill('none')
   .stroke({width:3, color:'#fff'})
+  .addClass("draggable")
 pod_sym.text('1')
-      .font({
-          family: 'Share Tech Mono'
-        , size: 24
-        , anchor: 'middle'
-        , leading: 1.4
-        , fill: '#fff'
-        , weight: 'bold'
-      })
-      .center(32,23)
+  .addClass("draggable")
+  .font({
+    family: 'Share Tech Mono'
+    , size: 24
+    , anchor: 'middle'
+    , leading: 1.4
+    , fill: '#fff'
+    , weight: 'bold'
+  })
+  .center(32,23)
 pod_sym.hide()
 
+controls = draw.group()
+controls.text('Silent')
+  .move(0,0)
+  .on('click', () => { 
+    silentGrid()
+  })
+controls.text('Danger')
+  .move(0,20)
+  .on('click', () => { 
+    dangerGrid()
+  })
+controls.text('Clear')
+  .move(0,40)
+  .on('click', () => { 
+    blankGrid()
+  })
+controls.move(0, footer_top)
+
+legend = draw.group()
+  .id('legend')
+legend.rect(335,80)
+  .fill('yellow')
+  .stroke({width:2, color: 'blue'})
+  .translate(1,1)
+legend_human = human_sym.clone()
+  .center(30,40)
+  .id('legend_human')
+  .show()
+legend_alien = alien_sym.clone()
+  .center(85,40)
+  .id('legend_alien')
+  .show()
+legend_pod1 = pod_sym.clone()
+  .center(140,40)
+  .id('legend_pod1')
+  .show()
+legend_pod2 = pod_sym.clone()
+  .center(195,40)
+  .id('legend_pod2')
+  .show()
+legend_pod2.select('text').first().text('2')
+legend_pod3 = pod_sym.clone()
+  .center(250,40)
+  .id('legend_pod3')
+  .show()
+legend_pod3.select('text').first().text('3')
+legend_pod4 = pod_sym.clone()
+  .center(305,40)
+  .id('legend_pod4')
+  .show()
+legend_pod4.select('text').first().text('4')
+legend
+  .add(legend_human)
+  .add(legend_alien)
+  .add(legend_pod1)
+  .add(legend_pod2)
+  .add(legend_pod3)
+  .add(legend_pod4)
+legend.move(grid_px_width - 340, footer_top)
+
 const grid = Grid.rectangle({
-  width: grid_width,
-  height: grid_height,
+  width: grid_hex_width,
+  height: grid_hex_height,
 
   onCreate(hex) {
     hex.render(draw)
@@ -407,14 +556,8 @@ function loadGrid(str) {
   }
 }
 
-drawing.addEventListener('mousedown', (ev) => {
-  console.log(ev)
-  let { offsetX, offsetY } = ev
-  console.log(`${offsetX}, ${offsetY}`)
-  const hexCoordinates = Grid.pointToHex([offsetX, offsetY])
-  const hex = grid.get(hexCoordinates)
-
-  if (hex) {
+function nullifyHex(hex) {
+  if (hex != null) {
     switch(hex) {
       case human_hex:
         human_hex = null 
@@ -435,6 +578,17 @@ drawing.addEventListener('mousedown', (ev) => {
         pod4_hex  = null 
         break;
     }
+  }
+}
+
+drawing.addEventListener('mousedown', (evt) => {
+  let dx = evt.pageX - drawing.offsetLeft
+  let dy = evt.pageY - drawing.offsetTop
+  const hexCoordinates = Grid.pointToHex([dx - grid_offset_x, dy - grid_offset_y])
+  const hex = grid.get(hexCoordinates)
+
+  if (hex) {
+    nullifyHex(hex);
 
     switch(hex.type){
       case htype.NONE:
@@ -444,29 +598,30 @@ drawing.addEventListener('mousedown', (ev) => {
         hex.danger()
         break;
       case htype.DANGER:
-        hex.human()
+        hex.blank()
         break;
       case htype.HUMAN:
-        hex.alien()
+        hex.blank()
         break;
       case htype.ALIEN:
-        hex.pod1()
+        hex.blank()
         break;
       case htype.POD1:
-        hex.pod2()
+        hex.blank()
         break;
       case htype.POD2:
-        hex.pod3()
+        hex.blank()
         break;
       case htype.POD3:
-        hex.pod4()
+        hex.blank()
         break;
       case htype.POD4:
         hex.blank()
         break;
     }
   }
-})
+}, true)
+
     </script>
   </body>
 </html>
