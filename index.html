@@ -1,7 +1,7 @@
 <html>
   <head>
     <script src="https://unpkg.com/honeycomb-grid@3.0.0/dist/honeycomb.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.4/svg.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.0.13/svg.min.js"></script>
     <link href="https://fonts.googleapis.com/css?family=Share+Tech+Mono&display=swap" rel="stylesheet">
   </head>
   <body>
@@ -49,8 +49,8 @@ function makeDraggable(evt) {
     }
 
     if (draggable != null) {
-      var child = draw.select(`#${draggable.id}`).first()
-      parent = child.parent()
+      var parent_id = draggable.parentElement.id
+      var parent = draw.find(`#${parent_id}`)[0]
 
       if (
            (parent == legend_human && human_hex)
@@ -62,7 +62,6 @@ function makeDraggable(evt) {
       ){ return; }
       selectedElement = parent
 
-      parent.front();
       origin = {x: selectedElement.x(), y: selectedElement.y()}
       offset = getMousePosition(evt);
       dragging = true
@@ -72,9 +71,9 @@ function makeDraggable(evt) {
   function drag(evt) {
     if (selectedElement) {
       evt.preventDefault();
+      selectedElement.front();
       var coord = getMousePosition(evt);
       selectedElement.dmove(coord.x - offset.x, coord.y - offset.y);
-      selectedElement.front();
       offset = coord;
     }
   }
@@ -150,7 +149,7 @@ const drawing_width = grid_offset_x + grid_px_width
 const drawing_height = grid_offset_y + grid_px_height + footer_height
 
 const drawing = document.getElementById('drawing')
-const draw = SVG(drawing).size(drawing_width, drawing_height)
+const draw = SVG().addTo(drawing).size(drawing_width, drawing_height)
 
 draw.on('load', (evt) => { makeDraggable(evt);})
 
@@ -217,22 +216,25 @@ const Hex = Honeycomb.extendHex({
 
     if (symbol != null) {
       this.polygon = symbol.clone()
+        .addTo(draw)
         .translate(x, y)
         .show()
         .on('mouseenter', () => { 
           if(!dragging) {
-            this.polygon.front().animate(500).scale(1.2)
+            this.polygon.front().animate(500).scale(5/4)
           }
         })
         .on('mouseleave', () => { 
-          this.polygon.stop(true, true).animate(250).scale(1)
+          if(!dragging) {
+            this.polygon.animate(250).scale(4/5)
+          }
         })
 
       if (text) {
-        t = this.polygon.select('text')
+        t = this.polygon.find('text')
 
-        if (t != null && t.length() > 0) {
-          t.first().text(text)
+        if (t != null && t.length > 0) {
+          t.text(text)
         }
       }
     }
@@ -247,13 +249,11 @@ const Hex = Honeycomb.extendHex({
 
   silent() {
     this.type = htype.SILENT
-
     this.setPolygon(silent_sym, `${xpos[this.x]}${ypos[this.y]}`)
   },
 
   danger() {
     this.type = htype.DANGER
-
     this.setPolygon(danger_sym, `${xpos[this.x]}${ypos[this.y]}`)
   },
 
@@ -316,7 +316,7 @@ tx = silent_sym.text('A01')
     , leading: 1.4
     , fill: '#000'
   })
-  .center(40,23)
+  .center(26,25)
 silent_sym.hide()
 
 danger_sym = draw.group().id('danger')
@@ -343,7 +343,7 @@ danger_sym.text('A01')
     , leading: 1.4
     , fill: '#000'
   })
-  .center(40,23)
+  .center(26,25)
 danger_sym.hide()
 
 human_sym = draw.group().id('human')
@@ -406,7 +406,7 @@ pod_sym.text('1')
     , fill: '#fff'
     , weight: 'bold'
   })
-  .center(32,23)
+  .center(26,25)
 pod_sym.hide()
 
 controls = draw.group()
@@ -429,45 +429,44 @@ controls.move(0, footer_top)
 
 legend = draw.group()
   .id('legend')
-legend.rect(335,80)
-  .fill('yellow')
-  .stroke({width:2, color: 'blue'})
+legend.rect(335,60)
+  .fill('none')
   .translate(1,1)
 legend_human = human_sym.clone()
-  .center(30,40)
+  .addTo(legend)
+  .center(30,30)
   .id('legend_human')
   .show()
 legend_alien = alien_sym.clone()
-  .center(85,40)
+  .addTo(legend)
+  .center(85,30)
   .id('legend_alien')
   .show()
 legend_pod1 = pod_sym.clone()
-  .center(140,40)
+  .addTo(legend)
+  .center(140,30)
   .id('legend_pod1')
   .show()
 legend_pod2 = pod_sym.clone()
-  .center(195,40)
+  .addTo(legend)
+  .center(195,30)
   .id('legend_pod2')
   .show()
-legend_pod2.select('text').first().text('2')
+legend_pod2.find('text').text('2')
 legend_pod3 = pod_sym.clone()
-  .center(250,40)
+  .addTo(legend)
+  .center(250,30)
   .id('legend_pod3')
   .show()
-legend_pod3.select('text').first().text('3')
+legend_pod3.find('text').text('3')
 legend_pod4 = pod_sym.clone()
-  .center(305,40)
+  .addTo(legend)
+  .center(305,30)
   .id('legend_pod4')
   .show()
-legend_pod4.select('text').first().text('4')
-legend
-  .add(legend_human)
-  .add(legend_alien)
-  .add(legend_pod1)
-  .add(legend_pod2)
-  .add(legend_pod3)
-  .add(legend_pod4)
+legend_pod4.find('text').text('4')
 legend.move(grid_px_width - 340, footer_top)
+legend.ungroup(draw)
 
 const grid = Grid.rectangle({
   width: grid_hex_width,
