@@ -856,9 +856,9 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
     function endDrag(evt) {
       upHex = evtToHex(evt);
       if (downHex != null && upHex != null && downHex == upHex) {
-        if (!paint) {
-          hexClick(evt);
-        }
+        // TODO: drag/drop a paint element onto its original hex will click the
+        // hex. impl dragDistance?? if (dragDistance < 25) {}
+        hexClick(evt);
       } else {
         if (clone != null) {
           if (!paint) {
