@@ -351,7 +351,8 @@ function Polygon() {
   this.pod = (n) => {
     this.remove();
 
-    // TODO: text position screwy when moved.
+    // TODO: legendPods; text position _very_ screwy when moved.
+    // TODO: hexPods; text position _little_ screwy when moved.
     const podGroup = draw.group()
       .addClass(`pod`)
       .addClass(`pod${n}`)
@@ -732,8 +733,18 @@ function evtToPolygon(evt) {
   if (hex != null) {
     return hex.polygon;
   }
-  // TODO: return polygon from legend
-  console.log(findDraggable(evt.target));
+
+  const draggable = findDraggable(evt.target);
+  if (draggable != null) {
+    switch(draggable) {
+      case legend.human.polygon.node: return legend.human;
+      case legend.alien.polygon.node: return legend.alien;
+      case legend.pod1.polygon.node: return legend.pod1;
+      case legend.pod2.polygon.node: return legend.pod2;
+      case legend.pod3.polygon.node: return legend.pod3;
+      case legend.pod4.polygon.node: return legend.pod4;
+    }
+  }
 }
 
 function nullifyGrid() {
@@ -854,6 +865,8 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
     }
 
     function endDrag(evt) {
+      // TODO: disable legend polygons if they are placed on map.
+      // TODO: nullifyHex, when dropping legend hex on another "legend" hex.
       upHex = evtToHex(evt);
       if (downHex != null && upHex != null && downHex == upHex) {
         // TODO: drag/drop a paint element onto its original hex will click the
