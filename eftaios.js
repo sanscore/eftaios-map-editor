@@ -866,11 +866,10 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
 
     function endDrag(evt) {
       // TODO: disable legend polygons if they are placed on map.
-      // TODO: nullifyHex, when dropping legend hex on another "legend" hex.
       upHex = evtToHex(evt);
       if (downHex != null && upHex != null && downHex == upHex) {
-        // TODO: drag/drop a paint element onto its original hex will click the
-        // hex. impl dragDistance?? if (dragDistance < 25) {}
+        // TODO: drag/drop a paint element onto its original hex will "click"
+        // the hex. impl dragDistance?? if (dragDistance < 25) {}
         hexClick(evt);
       } else {
         if (clone != null) {
@@ -880,6 +879,8 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
             if (hoverHex != null) {
               if (originalHex != null) {
                 originalHex.blank();
+              } else {
+                nullifyHex(hoverHex);
               }
               hoverHex.setType(originalType);
             }
