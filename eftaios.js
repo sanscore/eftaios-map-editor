@@ -181,20 +181,22 @@ function Polygon() {
       return this;
     }
 
-    this.origHighlight = this.polygon.find('.highlight').fill()[0];
-
     this.polygon
       .on('mouseenter', () => {
         if (!dragging) {
-          if (this.origHighlight != null) {
-            this.polygon.find('.highlight').fill({opacity: 1.0, color: 'aqua'});
+          let hiColor = this.polygon.data('hi-color');
+          if (hiColor != null) {
+            this.polygon.find('.highlight-fill').fill({opacity: 1.0, color: hiColor});
+            this.polygon.find('.highlight-stroke').stroke(hiColor);
           }
           this.polygon.front().animate(500).transform({scale: 1.2});
         }
       })
       .on('mouseleave', () => {
-        if (this.origHighlight != null) {
-          this.polygon.find('.highlight').fill(this.origHighlight);
+        let baseColor = this.polygon.data('base-color');
+        if (baseColor != null) {
+          this.polygon.find('.highlight-fill').fill(baseColor);
+          this.polygon.find('.highlight-stroke').stroke(baseColor);
         }
         this.polygon.animate(250).transform({scale: 1});
       })
@@ -209,13 +211,15 @@ function Polygon() {
     const blankGroup = draw.group()
       .addClass('blank')
       .addClass("draggable")
-      .addClass("paintable");
+      .addClass("paintable")
+      .data('base-color', 'none')
+      .data('hi-color', 'aqua');
     blankGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
       .fill('none')
       .attr({'pointer-events': 'visible'})
       .opacity(0.8)
-      .addClass('highlight');
+      .addClass('highlight-fill');
 
     this.polygon = blankGroup;
     this.addEvents();
@@ -229,19 +233,19 @@ function Polygon() {
     const silentGroup = draw.group()
       .addClass('silent')
       .addClass("draggable")
-      .addClass("paintable");
+      .addClass("paintable")
+      .data('base-color', '#fff')
+      .data('hi-color', 'aqua');
     silentGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
       .fill({opacity: 1, color: '#fff'})
       .stroke({ width: 2, color: '#838383' })
-      .addClass('highlight');
+      .addClass('highlight-fill');
     silentGroup.text('A01')
       .font({
-        family: 'Share Tech Mono',
-        size: 16,
         anchor: 'middle',
-        leading: 1.4,
         fill: '#000',
+        size: 16,
       })
       .center(26,25)
       .addClass('coordinates');
@@ -263,7 +267,9 @@ function Polygon() {
     const dangerGroup = draw.group()
       .addClass('danger')
       .addClass("draggable")
-      .addClass("paintable");
+      .addClass("paintable")
+      .data('base-color', '#ddd')
+      .data('hi-color', 'aqua');
     dangerGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
       .fill('#838383')
@@ -278,14 +284,12 @@ function Polygon() {
       .fill('#ddd')
       .size(38)
       .center(exampleHexCenter.x,exampleHexCenter.y)
-      .addClass('highlight');
+      .addClass('highlight-fill');
     dangerGroup.text('A01')
       .font({
-        family: 'Share Tech Mono',
-        size: 16,
         anchor: 'middle',
-        leading: 1.4,
         fill: '#000',
+        size: 16,
       })
       .center(26,25)
       .addClass('coordinates');
@@ -302,20 +306,26 @@ function Polygon() {
 
     const humanGroup = draw.group()
       .addClass('human')
-      .addClass("draggable");
+      .addClass("draggable")
+      .data('base-color', '#fff')
+      .data('hi-color', 'orange');
+
     humanGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
       .fill({opacity: 1, color: '#000'})
-      .stroke({ width: 2, color: '#838383' })
-      .addClass('highlight');
+      .stroke({ width: 2, color: '#838383' });
+
     humanGroup.path("M18 7 L13 10 V30 L25 38 L37 30 V10 L32 7")
       .translate(1,1)
       .fill('none')
-      .stroke({width:3, color:'#fff'});
+      .stroke({width:3, color:'#fff'})
+      .addClass('highlight-stroke');
+
     humanGroup.path("M13 18 L25 25 L37 18")
       .translate(1,1)
       .fill('none')
-      .stroke({width:3, color:'#fff'});
+      .stroke({width:3, color:'#fff'})
+      .addClass('highlight-stroke');
     humanGroup.hide();
 
     this.polygon = humanGroup;
@@ -329,18 +339,20 @@ function Polygon() {
 
     const alienGroup = draw.group()
       .addClass('alien')
-      .addClass("draggable");
+      .addClass("draggable")
+      .data('base-color', '#fff')
+      .data('hi-color', 'orange');
 
     alienGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
       .fill({opacity: 1, color: '#000'})
-      .stroke({ width: 2, color: '#838383' })
-      .addClass('highlight');
+      .stroke({ width: 2, color: '#838383' });
 
     alienGroup.path("M13 7 L37 20 V34 L25 27 L13 34 V20 L37 7")
       .translate(1,1)
       .fill('none')
-      .stroke({width:3, color:'#fff'});
+      .stroke({width:3, color:'#fff'})
+      .addClass('highlight-stroke');
     alienGroup.hide();
 
     this.polygon = alienGroup;
@@ -356,34 +368,35 @@ function Polygon() {
     const podGroup = draw.group()
       .addClass(`pod`)
       .addClass(`pod${n}`)
-      .addClass("draggable");
+      .addClass("draggable")
+      .data('base-color', '#fff')
+      .data('hi-color', 'orange');
 
     podGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
       .fill({opacity: 1, color: '#000'})
-      .stroke({ width: 2, color: '#838383' })
-      .addClass('highlight');
+      .stroke({ width: 2, color: '#838383' });
 
     podGroup.path("M32 5 H16 L8.5 18")
       .translate(1,1)
       .fill('none')
-      .stroke({width:3, color:'#fff'});
+      .stroke({width:3, color:'#fff'})
+      .addClass('highlight-stroke');
 
     podGroup.path("M18 38 H34 L41.5 25")
       .translate(1,1)
       .fill('none')
-      .stroke({width:3, color:'#fff'});
+      .stroke({width:3, color:'#fff'})
+      .addClass('highlight-stroke');
 
     podGroup.text(n)
       .font({
-        family: 'Share Tech Mono',
-        size: 24,
         anchor: 'middle',
-        leading: 1.4,
         fill: '#fff',
-        weight: 'bold',
+        size: 24,
       })
-      .center(26,24);
+      .center(26,24)
+      .addClass('highlight-fill');
     podGroup.hide();
 
     this.polygon = podGroup;
@@ -462,6 +475,8 @@ const Hex = Honeycomb.extendHex({
   },
 
   setType(type) {
+    nullifyHex(this);
+
     switch(type) {
       case PolygonType.NONE:
         this.blank()
@@ -531,6 +546,9 @@ const Hex = Honeycomb.extendHex({
       .center(this.cx, this.cy)
       .show();
     gridDetails.humanHex = this;
+
+    legend.human.polygon.off();
+    legend.human.polygon.opacity(0.5);
   },
 
   alien() {
@@ -543,6 +561,9 @@ const Hex = Honeycomb.extendHex({
       .center(this.cx, this.cy)
       .show();
     gridDetails.alienHex = this;
+
+    legend.alien.polygon.off();
+    legend.alien.polygon.opacity(0.5);
   },
 
   pod1() {
@@ -555,6 +576,9 @@ const Hex = Honeycomb.extendHex({
       .center(this.cx, this.cy)
       .show();
     gridDetails.pod1Hex = this;
+
+    legend.pod1.polygon.off();
+    legend.pod1.polygon.opacity(0.5);
   },
 
   pod2() {
@@ -567,6 +591,9 @@ const Hex = Honeycomb.extendHex({
       .center(this.cx, this.cy)
       .show();
     gridDetails.pod2Hex = this;
+
+    legend.pod2.polygon.off();
+    legend.pod2.polygon.opacity(0.5);
   },
 
   pod3() {
@@ -579,6 +606,9 @@ const Hex = Honeycomb.extendHex({
       .center(this.cx, this.cy)
       .show();
     gridDetails.pod3Hex = this;
+
+    legend.pod3.polygon.off();
+    legend.pod3.polygon.opacity(0.5);
   },
 
   pod4() {
@@ -591,12 +621,16 @@ const Hex = Honeycomb.extendHex({
       .center(this.cx, this.cy)
       .show();
     gridDetails.pod4Hex = this;
+
+    legend.pod4.polygon.off();
+    legend.pod4.polygon.opacity(0.5);
   },
 })
 
 const drawWidth = gridDetails.offsetX + gridDetails.pxWidth;
 const drawHeight = gridDetails.offsetY + gridDetails.pxHeight + gridDetails.footerHeight;
 const draw = SVG().size(drawWidth, drawHeight);
+draw.style('text {font-family: "Share Tech Mono";}');
 
 function createMap(draw) {
   const diagnol_pattern = draw.pattern(24, 24, function(add) {
@@ -606,14 +640,12 @@ function createMap(draw) {
 
   const cols = draw.group().id('cols')
   for(let i = 0, j = 32; i < gridDetails.xpos.length; ++i, j+=37.5) {
-    // TODO: move text/font details to a style
     cols
       .text(gridDetails.xpos[i])
       .font({
-        family: 'Share Tech Mono',
-        size: 16,
         anchor: 'middle',
         fill: '#838383',
+        size: 16,
       })
       .center(j, 8)
   }
@@ -691,9 +723,6 @@ function createMap(draw) {
   legend.pod4 = legendPod4;
 
   legendGroup.move(gridDetails.pxWidth - 340, gridDetails.footerTop);
-  // TODO: issue w/ Fx, SVG.JS;
-  //    OR, issue with moving legend hexes from legend rect
-  //legendGroup.ungroup(draw);
 }
 createMap(draw);
 
@@ -748,12 +777,12 @@ function evtToPolygon(evt) {
 }
 
 function nullifyGrid() {
-  gridDetails.humanHex = null
-  gridDetails.alienHex = null
-  gridDetails.pod1Hex = null
-  gridDetails.pod2Hex = null
-  gridDetails.pod3Hex = null
-  gridDetails.pod4Hex = null
+  nullifyHex(gridDetails.humanHex);
+  nullifyHex(gridDetails.alienHex);
+  nullifyHex(gridDetails.pod1Hex);
+  nullifyHex(gridDetails.pod2Hex);
+  nullifyHex(gridDetails.pod3Hex);
+  nullifyHex(gridDetails.pod4Hex);
 }
 
 function nullifyHex(hex) {
@@ -761,21 +790,39 @@ function nullifyHex(hex) {
     switch(hex) {
       case gridDetails.humanHex:
         gridDetails.humanHex = null;
+
+        legend.human.addEvents();
+        legend.human.polygon.opacity(1);
         break;
       case gridDetails.alienHex:
         gridDetails.alienHex = null;
+
+        legend.alien.addEvents();
+        legend.alien.polygon.opacity(1);
         break;
       case gridDetails.pod1Hex:
-        gridDetails.pod1Hex  = null;
+        gridDetails.pod1Hex = null;
+
+        legend.pod1.addEvents();
+        legend.pod1.polygon.opacity(1);
         break;
       case gridDetails.pod2Hex:
-        gridDetails.pod2Hex  = null;
+        gridDetails.pod2Hex = null;
+
+        legend.pod2.addEvents();
+        legend.pod2.polygon.opacity(1);
         break;
       case gridDetails.pod3Hex:
-        gridDetails.pod3Hex  = null;
+        gridDetails.pod3Hex = null;
+
+        legend.pod3.addEvents();
+        legend.pod3.polygon.opacity(1);
         break;
       case gridDetails.pod4Hex:
-        gridDetails.pod4Hex  = null;
+        gridDetails.pod4Hex = null;
+
+        legend.pod4.addEvents();
+        legend.pod4.polygon.opacity(1);
         break;
     }
   }
@@ -827,10 +874,6 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
         clone.hide()
           .id('clone')
           .addTo(draw);
-        if (paint){ 
-          clone.find('.highlight')
-            .fill('orange');
-        }
 
         let mouseLoc = getMousePosition(evt);
         offset = {
@@ -865,7 +908,6 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
     }
 
     function endDrag(evt) {
-      // TODO: disable legend polygons if they are placed on map.
       upHex = evtToHex(evt);
       if (downHex != null && upHex != null && downHex == upHex) {
         // TODO: drag/drop a paint element onto its original hex will "click"
