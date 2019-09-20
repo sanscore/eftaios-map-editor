@@ -682,7 +682,8 @@ function createMap(draw) {
   });
 
   const cols = draw.group().id('cols')
-  for(let i = 0, j = 32; i < gridDetails.xpos.length; ++i, j+=37.5) {
+  // TODO: calc j init pos; hixSize?
+  for(let i = 0, j = 25; i < gridDetails.xpos.length; ++i, j+=37.5) {
     cols
       .text(gridDetails.xpos[i])
       .font({
