@@ -8,22 +8,26 @@ div {
   display: inline-block;
 }
 
-svg img canvas {
+svg,img,canvas {
   display block;
 }
 
-svg text{
+#drawing {
    -webkit-user-select: none;
    -moz-user-select: none;
    -ms-user-select: none;
    user-select: none;
 }
+
+#maps {
+  float: right;
+}
     </style>
   </head>
   <body>
 
-  <div id="container">
-    <div id="drawing"></div>
+  <div id="drawing"></div>
+  <div id="maps">
     <h3>Ultimate Edition Maps</h3>
     <ul>
       <li><a href="#_ddsss__sssssdd1ddsd_ddsdd4dsdddddddddddds_dd_d__ddsddds_sdddd_ddddsd_sddddddddsd___ddddddsddddsdssssd_dsdd__ddssdddd_ddsdd_dssddddd_dddd_dsdsddsd_dsdsd_ddsdsda_hsdsddsdsddsd_dsdsdddddsddd_dddddds_d__sdddsddddssdssdddddddsddsddsdsddddsddssddsdsssd__sd__d_dddddd__dd__d__ddss__dddssdddsddddddsdds2dddd_sdddd3d_dssss__dsssdd">galilei</a></li>
@@ -52,7 +56,7 @@ svg text{
       <li>sound of silence</li>
     </ul>
   </div>
-  <div id="container2">
+  <div id="print">
     <div id="png"></div>
     <canvas></canvas>
   </div>

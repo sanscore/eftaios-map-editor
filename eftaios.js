@@ -889,7 +889,6 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
     svg.addEventListener('mousemove', drag);
     svg.addEventListener('mouseup', endDrag);
     svg.addEventListener('mouseleave', endDrag);
-    // TODO: register click/double-click to prevent default
     // TODO: limit to left-click
 
     function getMousePosition(evt) {
