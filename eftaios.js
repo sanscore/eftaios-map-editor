@@ -704,16 +704,27 @@ function createMap(draw) {
     .move(0,0)
     .on('click', () => {
       gridDetails.fillSilent();
+      window.location.hash = '';
     });
   controls.text('Danger')
     .move(0,20)
     .on('click', () => {
       gridDetails.fillDanger();
+      window.location.hash = '';
     });
   controls.text('Clear')
     .move(0,40)
     .on('click', () => {
       gridDetails.fillBlank();
+      window.location.hash = '';
+    });
+  controls.text('Share')
+    .move(60,0)
+    .on('click', () => {
+      // TODO: prevent hashchange trigger
+      // https://stackoverflow.com/questions/4106702/change-hash-without-triggering-a-hashchange-event
+      // TODO: Or, just not touch location.hash??
+      window.location.hash = gridDetails.toLink();
     });
   controls.move(0, gridDetails.footerTop);
 
@@ -821,8 +832,6 @@ function evtToPolygon(evt) {
 }
 
 function nullifyGrid() {
-  window.location.hash = '';
-
   nullifyHex(gridDetails.humanHex);
   nullifyHex(gridDetails.alienHex);
   nullifyHex(gridDetails.pod1Hex);
