@@ -820,6 +820,8 @@ function evtToPolygon(evt) {
 }
 
 function nullifyGrid() {
+  window.location.hash = '';
+
   nullifyHex(gridDetails.humanHex);
   nullifyHex(gridDetails.alienHex);
   nullifyHex(gridDetails.pod1Hex);
@@ -887,6 +889,8 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
     svg.addEventListener('mousemove', drag);
     svg.addEventListener('mouseup', endDrag);
     svg.addEventListener('mouseleave', endDrag);
+    // TODO: register click/double-click to prevent default
+    // TODO: limit to left-click
 
     function getMousePosition(evt) {
       var CTM = svg.getScreenCTM();
