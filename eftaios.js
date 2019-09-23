@@ -930,6 +930,10 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
     svg.addEventListener('mouseup', endDrag);
     svg.addEventListener('mouseleave', endDrag);
 
+    svg.addEventListener('touchstart', startDrag);
+    svg.addEventListener('touchmove', drag);
+    svg.addEventListener('touchend', endDrag);
+
     function getMousePosition(evt) {
       var CTM = svg.getScreenCTM();
       return {
