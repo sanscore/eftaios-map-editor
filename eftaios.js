@@ -4,6 +4,7 @@
 // TODO: impl print
 // TODO: impl save to PNG, PDF (Print to PDF?)
 //    convert map to canvas, toDataURL()
+// TODO: impl add/rm rows, cols
 'use strict';
 var drawing;
 var dragging = false
@@ -57,9 +58,7 @@ const gridDetails = { // TODO: change to something... so that hexSize is configu
 
   toDataImg() {
     // TODO: why do we have 2 SVG elements?
-    // TODO: Text doesn't use Share Tech Mono
     let xml = new XMLSerializer().serializeToString(document.querySelectorAll('svg')[1]);
-    console.log(xml)
     let svg = new Blob([xml], {type: "image/svg+xml;charset=utf-8"});
 
     let DOMURL = self.URL || self.webkitURL || self;
@@ -225,18 +224,51 @@ function Polygon() {
             this.polygon.find('.highlight-fill').fill({opacity: 1.0, color: hiColor});
             this.polygon.find('.highlight-stroke').stroke(hiColor);
           }
-          this.polygon.front().animate(500).transform({scale: 1.2});
         }
       })
       .on('mouseleave', () => {
-        let baseColor = this.polygon.data('base-color');
-        if (baseColor != null) {
-          this.polygon.find('.highlight-fill').fill(baseColor);
-          this.polygon.find('.highlight-stroke').stroke(baseColor);
+        if (!dragging) {
+          let baseColor = this.polygon.data('base-color');
+          if (baseColor != null) {
+            this.polygon.find('.highlight-fill').fill(baseColor);
+            this.polygon.find('.highlight-stroke').stroke(baseColor);
+          }
         }
-        this.polygon.animate(250).transform({scale: 1});
       })
 
+    return this;
+  }
+
+  this.setType = (type) => {
+    switch(type) {
+      case PolygonType.NONE:
+        this.blank();
+        break;
+      case PolygonType.SILENT:
+        this.silent();
+        break;
+      case PolygonType.DANGER:
+        this.danger();
+        break;
+      case PolygonType.HUMAN:
+        this.human();
+        break;
+      case PolygonType.ALIEN:
+        this.alien();
+        break;
+      case PolygonType.POD1:
+        this.pod1();
+        break;
+      case PolygonType.POD2:
+        this.pod2();
+        break;
+      case PolygonType.POD3:
+        this.pod3();
+        break;
+      case PolygonType.POD4:
+        this.pod4();
+        break;
+    }
     return this;
   }
 
@@ -399,8 +431,6 @@ function Polygon() {
   this.pod = (n) => {
     this.remove();
 
-    // TODO: legendPods; text position _very_ screwy when moved.
-    // TODO: hexPods; text position _little_ screwy when moved.
     const podGroup = draw.group()
       .addClass(`pod`)
       .addClass(`pod${n}`)
@@ -515,31 +545,31 @@ const Hex = Honeycomb.extendHex({
 
     switch(type) {
       case PolygonType.NONE:
-        this.blank()
+        this.blank();
         break;
       case PolygonType.SILENT:
-        this.silent()
+        this.silent();
         break;
       case PolygonType.DANGER:
-        this.danger()
+        this.danger();
         break;
       case PolygonType.HUMAN:
-        this.human()
+        this.human();
         break;
       case PolygonType.ALIEN:
-        this.alien()
+        this.alien();
         break;
       case PolygonType.POD1:
-        this.pod1()
+        this.pod1();
         break;
       case PolygonType.POD2:
-        this.pod2()
+        this.pod2();
         break;
       case PolygonType.POD3:
-        this.pod3()
+        this.pod3();
         break;
       case PolygonType.POD4:
-        this.pod4()
+        this.pod4();
         break;
       default:
         throw `Unknown Hex Type: ${type}`
@@ -682,7 +712,7 @@ function createMap(draw) {
   });
 
   const cols = draw.group().id('cols')
-  // TODO: calc j init pos; hixSize?
+  // TODO: calc j init pos; hexSize?
   for(let i = 0, j = 25; i < gridDetails.xpos.length; ++i, j+=37.5) {
     cols
       .text(gridDetails.xpos[i])
@@ -721,9 +751,9 @@ function createMap(draw) {
   controls.text('Share')
     .move(60,0)
     .on('click', () => {
-      // TODO: prevent hashchange trigger
-      // https://stackoverflow.com/questions/4106702/change-hash-without-triggering-a-hashchange-event
-      // TODO: Or, just not touch location.hash??
+      // TODO: Do not touch location.hash.
+      // TODO: Create a Share modal. "Show" modal when clicked,
+      //    and close via an 'x' button.
       window.location.hash = gridDetails.toLink();
     });
   controls.move(0, gridDetails.footerTop);
@@ -899,7 +929,6 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
     svg.addEventListener('mousemove', drag);
     svg.addEventListener('mouseup', endDrag);
     svg.addEventListener('mouseleave', endDrag);
-    // TODO: limit to left-click
 
     function getMousePosition(evt) {
       var CTM = svg.getScreenCTM();
@@ -909,11 +938,16 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
       };
     }
 
-    var downHex, upHex;
-    var originalHex, original, clone, offset;
+    var downHex, upHex, originalHex; // Hexes
+    var original, clone; // Polygons
+    var originalLoc, offset; // xy-coordinates
+    var distance = 0;
     var paint = false;
 
     function startDrag(evt) {
+      if (evt.button != 0) {
+        return;
+      }
       downHex = evtToHex(evt);
 
       originalHex = evtToHex(evt);
@@ -923,27 +957,39 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
       draw.find('#clone').remove();
 
       if (original != null && isDraggable(original.polygon.node)) {
-        dragging = true
         paint = isPaintable(original.polygon.node);
 
-        original.polygon.transform({scale: 1});
+        clone = new Polygon().setType(original.type).polygon;
+        clone.fire('mouseenter');
 
-        clone = original.polygon.clone();
         clone.hide()
           .id('clone')
-          .addTo(draw);
+          .addTo(draw)
+          .center(original.polygon.cx(), original.polygon.cy());
 
         let mouseLoc = getMousePosition(evt);
         offset = {
           x: original.polygon.cx() - mouseLoc.x,
           y: original.polygon.cy() - mouseLoc.y,
         };
+
+        originalLoc = mouseLoc;
+        dragging = true;
       }
     }
 
     function drag(evt) {
       if (dragging) {
-        clone.show()
+        clone.show();
+
+        let mouseLoc = getMousePosition(evt);
+        let newDistance = Math.sqrt(
+          Math.pow(originalLoc.x - mouseLoc.x, 2) + Math.pow(originalLoc.y - mouseLoc.y, 2)
+        );
+
+        if (newDistance > distance) {
+          distance = newDistance;
+        }
 
         let hoverHex = evtToHex(evt);
         if (hoverHex != null) {
@@ -959,18 +1005,18 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
             .find('text.coordinates')
             .text(`${gridDetails.xpos[hoverHex.x]}${gridDetails.ypos[hoverHex.y]}`);
         } else {
-          let mouseLoc = getMousePosition(evt);
           clone.center(mouseLoc.x + offset.x, mouseLoc.y + offset.y);
         }
       }
     }
 
     function endDrag(evt) {
+      dragging = false;
       upHex = evtToHex(evt);
       if (downHex != null && upHex != null && downHex == upHex) {
-        // TODO: drag/drop a paint element onto its original hex will "click"
-        // the hex. impl dragDistance?? if (dragDistance < 25) {}
-        hexClick(evt);
+        if (distance < gridDetails.hexSize){
+          hexClick(evt);
+        }
       } else {
         if (clone != null) {
           if (!paint) {
@@ -982,6 +1028,8 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
               } else {
                 nullifyHex(hoverHex);
               }
+
+              original.polygon.fire('mouseleave');
               hoverHex.setType(originalType);
             }
           }
@@ -991,12 +1039,11 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
         clone.remove();
         clone = null;
       }
-      dragging = false;
+      distance = 0;
     }
 
     function hexClick(evt) {
       if (downHex != null && upHex != null && downHex != upHex) {
-        console.log('wtf?');
         return;
       }
 
