@@ -930,6 +930,7 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
     svg.addEventListener('mouseup', endDrag);
     svg.addEventListener('mouseleave', endDrag);
 
+    // TODO: figure this out.
     svg.addEventListener('touchstart', startDrag);
     svg.addEventListener('touchmove', drag);
     svg.addEventListener('touchend', endDrag);
@@ -984,6 +985,7 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
 
     function drag(evt) {
       if (dragging) {
+        evt.preventDefault();
         clone.show();
 
         let mouseLoc = getMousePosition(evt);
