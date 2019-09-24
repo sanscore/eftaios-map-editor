@@ -24,39 +24,45 @@ const PolygonType = {
 }
 
 const sqrt3 = Math.sqrt(3)
-const padding = 2
 
-const gridDetails = { // TODO: change to something... so that hexSize is configurable. gridWrapper?
-  hexSize:       25,
-  hexWidth:      23,
-  hexHeight:     14,
-  footerTop:     20 + (25 * sqrt3 * (14 + 0.5) + padding) + 2 * padding, // 20=offsetY, (...)=pxHeight
-  footerHeight:  100,
-  pxWidth:       (25/2) * (23*3+1) + padding,        // 25=hexSize, 23=hexWidth
-  pxHeight:      25 * sqrt3 * (14 + 0.5) + padding,  // 25=hexSize, 14=hexHeight
-  offsetX:       0,
-  offsetY:       20,
-  humanHex:      null,
-  alienHex:      null,
-  pod1Hex:       null,
-  pod2Hex:       null,
-  pod3Hex:       null,
-  pod4Hex:       null,
+// TODO: hexSize issues break hexes, breaks left-/right- bars
+function GridWrapper(hexSize, hexWidth, hexHeight) {
+  this.hexSize = hexSize;
+  this.hexWidth = hexWidth;
+  this.hexHeight = hexHeight;
 
-  xpos: [   // TODO: turn into function, int to char
+  this.offsetX = 20;
+  this.offsetY = 20;
+  this.padding = 2
+
+  this.pxWidth = (hexSize/2) * (hexWidth*3+1) + this.padding;
+  this.pxHeight = hexSize * sqrt3 * (hexHeight + 0.5) + this.padding;
+
+  this.footerTop = this.offsetY + this.pxHeight + 2 * this.padding;
+  this.footerHeight = 100;
+
+  this.humanHex = null;
+  this.alienHex = null;
+  this.pod1Hex = null;
+  this.pod2Hex = null;
+  this.pod3Hex = null;
+  this.pod4Hex = null;
+
+
+  this.xpos = [   // TODO: turn into function, int to char
     "A", "B", "C", "D", "E", "F",
     "G", "H", "I", "J", "K", "L",
     "M", "N", "O", "P", "Q", "R",
     "S", "T", "U", "V", "W",
-  ],
+  ];
 
-  ypos: [   // TODO: turn into function, 2-digit leading 0
+  this.ypos = [   // TODO: turn into function, 2-digit leading 0
     "01", "02", "03", "04", "05", "06",
     "07", "08", "09", "10", "11", "12",
     "13", "14",
-  ],
+  ];
 
-  toDataImg() {
+  this.toDataImg = () => {
     // TODO: why do we have 2 SVG elements?
     let xml = new XMLSerializer().serializeToString(document.querySelectorAll('svg')[1]);
     let svg = new Blob([xml], {type: "image/svg+xml;charset=utf-8"});
@@ -75,13 +81,13 @@ const gridDetails = { // TODO: change to something... so that hexSize is configu
       DOMURL.revokeObjectURL(png);
     }
     img.src = url;
-  },
+  };
 
-  toLink() {
+  this.toLink = () => {
     return grid.map(h => h.toSymbol()).join('');
-  },
+  };
 
-  fromLink(str) {
+  this.fromLink = (str) => {
     if (grid.length != str.length) {
       return;
     }
@@ -122,17 +128,17 @@ const gridDetails = { // TODO: change to something... so that hexSize is configu
         default:
       }
     }
-  },
+  };
 
-  loadLink() {
+  this.loadLink = () => {
     gridDetails.fromLink(window.location.hash.substring(1));
-  },
+  };
 
-  toJSON() {
+  this.toJSON = () => {
     return grid;
-  },
+  };
 
-  fromJSON(str) {
+  this.fromJSON = (str) => {
     const gridArray = JSON.parse(str)
     if (grid.length != gridArray.length) {
       return;
@@ -145,35 +151,37 @@ const gridDetails = { // TODO: change to something... so that hexSize is configu
       let point = hex.toPoint()
       hex.setType(type);
     }
-  },
+  };
 
-  fillBlank() {
+  this.fillBlank = () => {
     nullifyGrid();
 
     for(let i = 0; i < grid.length; ++i) {
       let hex = grid.get(i)
       hex.blank();
     }
-  },
+  };
 
-  fillSilent() {
+  this.fillSilent = () => {
     nullifyGrid();
 
     for(let i = 0; i < grid.length; ++i) {
       let hex = grid.get(i)
       hex.silent();
     }
-  },
+  };
 
-  fillDanger() {
+  this.fillDanger = () => {
     nullifyGrid();
 
     for(let i = 0; i < grid.length; ++i) {
       let hex = grid.get(i)
       hex.danger();
     }
-  },
+  };
 }
+const gridDetails = new GridWrapper(25, 23, 14);
+
 
 function Polygon() {
   this.polygon;
@@ -307,7 +315,7 @@ function Polygon() {
     silentGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
       .fill({opacity: 1, color: '#fff'})
-      .stroke({ width: 2, color: '#838383' })
+      .stroke({ width: 2, color: '#777' })
       .addClass('highlight-fill');
     silentGroup.text('A01')
       .font({
@@ -340,8 +348,8 @@ function Polygon() {
       .data('hi-color', 'aqua');
     dangerGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
-      .fill('#838383')
-      .stroke({width: 2, color: '#838383'});
+      .fill('#777')
+      .stroke({width: 2, color: '#777'});
     dangerGroup.polygon([
       [4,0],        [6,0],        [7,sqrt3],    [9,sqrt3],   [10,sqrt3*2],
       [9,sqrt3*3],  [10,sqrt3*4], [9,sqrt3*5],  [7,sqrt3*5], [6,sqrt3*6],
@@ -381,7 +389,7 @@ function Polygon() {
     humanGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
       .fill({opacity: 1, color: '#000'})
-      .stroke({ width: 2, color: '#838383' });
+      .stroke({ width: 2, color: '#777' });
 
     humanGroup.path("M18 7 L13 10 V30 L25 38 L37 30 V10 L32 7")
       .translate(1,1)
@@ -414,7 +422,7 @@ function Polygon() {
     alienGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
       .fill({opacity: 1, color: '#000'})
-      .stroke({ width: 2, color: '#838383' });
+      .stroke({ width: 2, color: '#777' });
 
     alienGroup.path("M13 7 L37 20 V34 L25 27 L13 34 V20 L37 7")
       .translate(1,1)
@@ -441,7 +449,7 @@ function Polygon() {
     podGroup.polygon(Hex().corners().map(({ x, y }) => `${x},${y}`).join(' '))
       .translate(1,1)
       .fill({opacity: 1, color: '#000'})
-      .stroke({ width: 2, color: '#838383' });
+      .stroke({ width: 2, color: '#777' });
 
     podGroup.path("M32 5 H16 L8.5 18")
       .translate(1,1)
@@ -693,7 +701,7 @@ const Hex = Honeycomb.extendHex({
   },
 })
 
-const drawWidth = gridDetails.offsetX + gridDetails.pxWidth;
+const drawWidth = gridDetails.offsetX + gridDetails.pxWidth + 40;
 const drawHeight = gridDetails.offsetY + gridDetails.pxHeight + gridDetails.footerHeight;
 const draw = SVG().size(drawWidth, drawHeight);
 draw.style(`
@@ -705,20 +713,23 @@ draw.style(`
 text {font-family: "Share Tech Mono";}
 `);
 
+// TODO: move to GridWrapper?
 function createMap(draw) {
   const diagnol_pattern = draw.pattern(24, 24, function(add) {
-    add.line(11, -1, 36, 24).stroke({ color: '#838383', width: 1 })
-    add.line(-1, 11, 24, 36).stroke({ color: '#838383', width: 1 })
+    add.line(11, -1, 36, 24).stroke({ color: '#777', width: 1 })
+    add.line(-1, 11, 24, 36).stroke({ color: '#777', width: 1 })
   });
 
   const cols = draw.group().id('cols')
-  // TODO: calc j init pos; hexSize?
-  for(let i = 0, j = 25; i < gridDetails.xpos.length; ++i, j+=37.5) {
+
+  const colOffset = gridDetails.offsetX + gridDetails.hexSize;
+  const colInterval = gridDetails.hexSize * 1.5;
+  for(let i = 0, j = colOffset; i < gridDetails.xpos.length; ++i, j+=colInterval) {
     cols
       .text(gridDetails.xpos[i])
       .font({
         anchor: 'middle',
-        fill: '#838383',
+        fill: '#777',
         size: 16,
       })
       .center(j, 8)
@@ -729,28 +740,57 @@ function createMap(draw) {
     .move(gridDetails.offsetX, gridDetails.offsetY)
     .id('grid');
 
+  // TODO: switch to responsive design; 649=pxHeight, 902=offsetX+pxWidth
+  // TODO: map name
+  // TODO: click, modal to change name
+  // TODO: turn into function
+  const leftBar = draw.group()
+  leftBar.path("M15 20 H8 V649 H18")
+    .id('leftBar')
+    .fill('none')
+    .stroke({color: '#777', width: 2});
+  let lbtext = leftBar.text('foobar')
+      .font({
+        anchor: 'middle',
+        fill: '#777',
+        size: 16,
+      })
+    .center(8, 325)
+    .transform({rotate: 270});
+  let lbtb = lbtext.bbox()
+  leftBar.rect(lbtb.h, lbtb.w + 20)
+    .fill('white')
+    .center(8, 325)
+    .backward();
+
+  const rightBar = leftBar.clone()
+    .id('rightBar')
+    .addTo(draw)
+    .move(902, 20)
+    .transform({rotate: 180});
+
   const controls = draw.group()
   controls.text('Silent')
     .move(0,0)
-    .on('click', () => {
+    .on('click touch', () => {
       gridDetails.fillSilent();
       window.location.hash = '';
     });
   controls.text('Danger')
     .move(0,20)
-    .on('click', () => {
+    .on('click touch', () => {
       gridDetails.fillDanger();
       window.location.hash = '';
     });
   controls.text('Clear')
     .move(0,40)
-    .on('click', () => {
+    .on('click touch', () => {
       gridDetails.fillBlank();
       window.location.hash = '';
     });
   controls.text('Share')
     .move(60,0)
-    .on('click', () => {
+    .on('click touch', () => {
       // TODO: Do not touch location.hash.
       // TODO: Create a Share modal. "Show" modal when clicked,
       //    and close via an 'x' button.
@@ -822,8 +862,10 @@ const grid = Grid.rectangle({
 })
 
 function evtToHexCoordinates(evt) {
-  const dx = evt.pageX - drawing.offsetLeft - gridDetails.offsetX;
-  const dy = evt.pageY - drawing.offsetTop - gridDetails.offsetY;
+  const pageX = evt.pageX || evt.changedTouches[0].pageX;
+  const pageY = evt.pageY || evt.changedTouches[0].pageY;
+  const dx = pageX - drawing.offsetLeft - gridDetails.offsetX;
+  const dy = pageY - drawing.offsetTop - gridDetails.offsetY;
   return Grid.pointToHex([dx, dy]);
 }
 
@@ -917,11 +959,11 @@ window.addEventListener('hashchange', gridDetails.loadLink, false);
 
 document.addEventListener('DOMContentLoaded', function(loadEvent) {
   function isDraggable(el) {
-    return el.classList.contains('draggable')
+    return el.classList.contains('draggable');
   }
 
   function isPaintable(el) {
-    return el.classList.contains('paintable')
+    return el.classList.contains('paintable');
   }
 
   function makeDraggable(svg) {
@@ -930,32 +972,32 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
     svg.addEventListener('mouseup', endDrag);
     svg.addEventListener('mouseleave', endDrag);
 
-    // TODO: figure this out.
-    svg.addEventListener('touchstart', startDrag);
-    svg.addEventListener('touchmove', drag);
-    svg.addEventListener('touchend', endDrag);
+    // TODO: legend-hexes work perfectly. Painting hexes do not. :/
+    svg.addEventListener('touchstart', (evt) => {evt.preventDefault(); startDrag(evt);});
+    svg.addEventListener('touchmove', (evt) => {evt.preventDefault(); drag(evt);}, {passive: false});
+    svg.addEventListener('touchend', (evt) => {evt.preventDefault(); endDrag(evt);});
 
     function getMousePosition(evt) {
       var CTM = svg.getScreenCTM();
+      const clientX = evt.clientX || evt.changedTouches[0].clientX;
+      const clientY = evt.clientY || evt.changedTouches[0].clientY;
       return {
-        x: (evt.clientX - CTM.e) / CTM.a,
-        y: (evt.clientY - CTM.f) / CTM.d
+        x: (clientX - CTM.e) / CTM.a,
+        y: (clientY - CTM.f) / CTM.d
       };
     }
 
-    var downHex, upHex, originalHex; // Hexes
+    var downHex, upHex; // Hexes
     var original, clone; // Polygons
     var originalLoc, offset; // xy-coordinates
     var distance = 0;
     var paint = false;
 
     function startDrag(evt) {
-      if (evt.button != 0) {
-        return;
-      }
-      downHex = evtToHex(evt);
+      let retEarly = (evt.button != null) ? evt.button !== 0 : evt.touches.length !== 1;
+      if (retEarly) { return; }
 
-      originalHex = evtToHex(evt);
+      downHex = evtToHex(evt);
       original = evtToPolygon(evt);
 
       // remove old clone, if left behind.
@@ -985,7 +1027,6 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
 
     function drag(evt) {
       if (dragging) {
-        evt.preventDefault();
         clone.show();
 
         let mouseLoc = getMousePosition(evt);
@@ -1018,6 +1059,10 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
 
     function endDrag(evt) {
       dragging = false;
+
+      let retEarly = (evt.button != null) ? evt.button !== 0 : evt.touches.length !== 0;
+      if (retEarly) { return; }
+
       upHex = evtToHex(evt);
       if (downHex != null && upHex != null && downHex == upHex) {
         if (distance < gridDetails.hexSize){
@@ -1029,8 +1074,8 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
             let hoverHex = evtToHex(evt);
             let originalType = original.type
             if (hoverHex != null) {
-              if (originalHex != null) {
-                originalHex.blank();
+              if (downHex != null) {
+                downHex.blank();
               } else {
                 nullifyHex(hoverHex);
               }
@@ -1043,9 +1088,14 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
       }
       if (clone != null) {
         clone.remove();
-        clone = null;
       }
+      paint = false;
       distance = 0;
+      downHex = null;
+      upHex = null;
+      clone = null;
+      original = null;
+      originalLoc = null;
     }
 
     function hexClick(evt) {
