@@ -48,6 +48,7 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
   this.pod3Hex = null;
   this.pod4Hex = null;
 
+  this.mapName = "[map name]";
 
   this.xpos = [   // TODO: turn into function, int to char
     "A", "B", "C", "D", "E", "F",
@@ -101,11 +102,20 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
 
       gridArray[j] = g0 << 6 | g1 << 4 | g2 << 2 | g3;
     }
-    return btoa(String.fromCharCode.apply(null, gridArray)) + "," + specials;
+    return this.mapName + "," + btoa(String.fromCharCode.apply(null, gridArray)) + "," + specials;
   };
 
   this.fromCode = (code) => {
-    let [b64Grid, specials] = code.split(',');
+    if (code == null) {
+      this.setMapName();
+      return;
+    }
+
+    let [name, b64Grid, specials] = code.split(',');
+    if (specials == null) {
+      this.setMapName();
+      return;
+    }
     specials = specials.split('').reverse();
 
     let gridArray = atob(b64Grid)
@@ -121,7 +131,7 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
       new_grid.push(x & 3);
     }
 
-    gridDetails.fillBlank();
+    this.fillBlank();
     for (let j =0; j < 322; ++j) { // 23 * 14 == 322
       let x = new_grid[j];
       if (x == 3) {
@@ -130,11 +140,68 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
         grid.get(j).fromCode(x);
       }
     }
+
+    this.setMapName(decodeURIComponent(name));
   };
 
-  this.loadLink = () => {
-    gridDetails.fromCode(window.location.hash.substring(1));
+  this.loadHash = () => {
+    this.fromCode(window.location.hash.substring(1));
   };
+
+  this.setHash = () => {
+    // TODO: Do not touch location.hash.
+    // TODO: Create a Share modal. "Show" modal when clicked,
+    //    and close via an 'x' button.
+    window.location.hash = this.toCode();
+  }
+
+  this.mapPrompt = () => {
+    let new_name = window.prompt("Choose a map name.");
+    if (new_name == null || new_name == "") { return; }
+
+    this.setMapName(new_name);
+    this.setHash();
+  }
+
+  this.setMapName = (name) => {
+    // TODO: click, modal to change name
+    if (name == null) {
+      name = "[map name]";
+    }
+    this.mapName = name;
+
+    draw.find('#leftBar').remove();
+    draw.find('#rightBar').remove();
+
+    const leftBar = draw.group()
+      .id('leftBar');
+    leftBar.path("M15 20 H8 V649 H18")
+      .fill('none')
+      .stroke({color: '#777', width: 2});
+    let lbtext = leftBar.text(name)
+      .font({
+        anchor: 'middle',
+        fill: '#777',
+        size: 16,
+      })
+      .center(8, 325)
+      .transform({rotate: 270})
+      .on('click', this.mapPrompt );
+    let lbtb = lbtext.bbox()
+    leftBar.rect(lbtb.h, lbtb.w + 20)
+      .fill('white')
+      .center(8, 325)
+      .backward()
+      .on('click', this.mapPrompt );
+
+    const rightBar = leftBar.clone()
+      .id('rightBar')
+      .addTo(draw)
+      .move(902, 20)
+      .transform({rotate: 180});
+    rightBar.find('text,rect')
+      .on('click', this.mapPrompt );
+  }
 
   this.toJSON = () => {
     return grid;
@@ -162,6 +229,7 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
       let hex = grid.get(i)
       hex.blank();
     }
+    this.setMapName('null');
   };
 
   this.fillSilent = () => {
@@ -171,6 +239,7 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
       let hex = grid.get(i)
       hex.silent();
     }
+    this.setMapName('mute');
   };
 
   this.fillDanger = () => {
@@ -180,6 +249,7 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
       let hex = grid.get(i)
       hex.danger();
     }
+    this.setMapName('Danger! Danger!');
   };
 }
 const gridDetails = new GridWrapper(25, 23, 14);
@@ -784,33 +854,6 @@ function createMap(draw) {
     .id('grid');
 
   // TODO: switch to responsive design; 649=pxHeight, 902=offsetX+pxWidth
-  // TODO: map name
-  // TODO: click, modal to change name
-  // TODO: turn into function
-  const leftBar = draw.group()
-  leftBar.path("M15 20 H8 V649 H18")
-    .id('leftBar')
-    .fill('none')
-    .stroke({color: '#777', width: 2});
-  let lbtext = leftBar.text('foobar')
-      .font({
-        anchor: 'middle',
-        fill: '#777',
-        size: 16,
-      })
-    .center(8, 325)
-    .transform({rotate: 270});
-  let lbtb = lbtext.bbox()
-  leftBar.rect(lbtb.h, lbtb.w + 20)
-    .fill('white')
-    .center(8, 325)
-    .backward();
-
-  const rightBar = leftBar.clone()
-    .id('rightBar')
-    .addTo(draw)
-    .move(902, 20)
-    .transform({rotate: 180});
 
   const controls = draw.group()
   controls.text('Silent')
@@ -833,12 +876,7 @@ function createMap(draw) {
     });
   controls.text('Share')
     .move(60,0)
-    .on('click touch', () => {
-      // TODO: Do not touch location.hash.
-      // TODO: Create a Share modal. "Show" modal when clicked,
-      //    and close via an 'x' button.
-      window.location.hash = gridDetails.toCode();
-    });
+    .on('click touch', gridDetails.setHash);
   controls.move(0, gridDetails.footerTop);
 
   const legendGroup = draw.group()
@@ -998,7 +1036,7 @@ function nullifyHex(hex) {
   }
 }
 
-window.addEventListener('hashchange', gridDetails.loadLink, false);
+window.addEventListener('hashchange', gridDetails.loadHash, false);
 
 document.addEventListener('DOMContentLoaded', function(loadEvent) {
   function isDraggable(el) {
@@ -1165,4 +1203,6 @@ document.addEventListener('DOMContentLoaded', function(loadEvent) {
   drawing = document.getElementById('drawing');
   draw.addTo(drawing);
   makeDraggable(draw.node);
+
+  gridDetails.loadHash();
 }, false);
