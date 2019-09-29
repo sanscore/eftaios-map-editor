@@ -83,55 +83,57 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
     img.src = url;
   };
 
-  this.toLink = () => {
-    return grid.map(h => h.toSymbol()).join('');
+  this.toCode = () => {
+    let specials = "";
+    let gridArray = new Uint8Array(81); // 23 * 14 / 4 == 80.5
+    for (let i = 0, j = 0; i < grid.length; i+=4, ++j) {
+      let g0 = grid.get(i+0) ? grid.get(i+0).toCode() : 0;
+      if (g0 == 3) { specials += grid.get(i+0).toSymbol() }
+
+      let g1 = grid.get(i+1) ? grid.get(i+1).toCode() : 0;
+      if (g1 == 3) { specials += grid.get(i+1).toSymbol() }
+
+      let g2 = grid.get(i+2) ? grid.get(i+2).toCode() : 0;
+      if (g2 == 3) { specials += grid.get(i+2).toSymbol() }
+
+      let g3 = grid.get(i+3) ? grid.get(i+3).toCode() : 0;
+      if (g3 == 3) { specials += grid.get(i+3).toSymbol() }
+
+      gridArray[j] = g0 << 6 | g1 << 4 | g2 << 2 | g3;
+    }
+    return btoa(String.fromCharCode.apply(null, gridArray)) + "," + specials;
   };
 
-  this.fromLink = (str) => {
-    if (grid.length != str.length) {
-      return;
-    }
-    nullifyGrid();
+  this.fromCode = (code) => {
+    let [b64Grid, specials] = code.split(',');
+    specials = specials.split('').reverse();
 
-    const gridArray = str.split('');
-    for(let i = 0; i < gridArray.length; ++i) {
-      let code = gridArray[i];
-      let hex = grid.get(i);
-      switch(code) {
-        case '_':
-          hex.blank();
-          break;
-        case 's':
-          hex.silent();
-          break;
-        case 'd':
-          hex.danger();
-          break;
-        case 'h':
-          hex.human();
-          break;
-        case 'a':
-          hex.alien();
-          break;
-        case '1':
-          hex.pod1();
-          break;
-        case '2':
-          hex.pod2();
-          break;
-        case '3':
-          hex.pod3();
-          break;
-        case '4':
-          hex.pod4();
-          break;
-        default:
+    let gridArray = atob(b64Grid)
+      .split('')
+      .map(function (c) { return c.charCodeAt(0); });
+
+    let new_grid = [];
+    for (let i = 0; i < gridArray.length; ++i) {
+      let x = gridArray[i];
+      new_grid.push((x & 192) >> 6);
+      new_grid.push((x & 48) >> 4);
+      new_grid.push((x & 12) >> 2);
+      new_grid.push(x & 3);
+    }
+
+    gridDetails.fillBlank();
+    for (let j =0; j < 322; ++j) { // 23 * 14 == 322
+      let x = new_grid[j];
+      if (x == 3) {
+        grid.get(j).fromCode(specials.pop());
+      } else {
+        grid.get(j).fromCode(x);
       }
     }
   };
 
   this.loadLink = () => {
-    gridDetails.fromLink(window.location.hash.substring(1));
+    gridDetails.fromCode(window.location.hash.substring(1));
   };
 
   this.toJSON = () => {
@@ -145,7 +147,7 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
     }
 
     nullifyGrid();
-    for(let i = 0; i < gridArray.length; ++i) {
+    for (let i = 0; i < gridArray.length; ++i) {
       let [ x, y, type ] = gridArray[i]
       let hex = grid.get([x, y])
       let point = hex.toPoint()
@@ -156,7 +158,7 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
   this.fillBlank = () => {
     nullifyGrid();
 
-    for(let i = 0; i < grid.length; ++i) {
+    for (let i = 0; i < grid.length; ++i) {
       let hex = grid.get(i)
       hex.blank();
     }
@@ -165,7 +167,7 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
   this.fillSilent = () => {
     nullifyGrid();
 
-    for(let i = 0; i < grid.length; ++i) {
+    for (let i = 0; i < grid.length; ++i) {
       let hex = grid.get(i)
       hex.silent();
     }
@@ -174,7 +176,7 @@ function GridWrapper(hexSize, hexWidth, hexHeight) {
   this.fillDanger = () => {
     nullifyGrid();
 
-    for(let i = 0; i < grid.length; ++i) {
+    for (let i = 0; i < grid.length; ++i) {
       let hex = grid.get(i)
       hex.danger();
     }
@@ -513,6 +515,47 @@ const Hex = Honeycomb.extendHex({
 
   toJSON() { return [this.x, this.y, this.type()]; },
 
+  toCode() {
+    switch(this.type()) {
+      case PolygonType.NONE: return 0;
+      case PolygonType.SILENT: return 1;
+      case PolygonType.DANGER: return 2;
+      default: return 3;
+    }
+  },
+
+  fromCode(code) {
+    switch(code) {
+      case 0:
+        this.blank();
+        break;
+      case 1:
+        this.silent();
+        break;
+      case 2:
+        this.danger();
+        break;
+      case 'h':
+        this.human();
+        break;
+      case 'a':
+        this.alien();
+        break;
+      case '1':
+        this.pod1();
+        break;
+      case '2':
+        this.pod2();
+        break;
+      case '3':
+        this.pod3();
+        break;
+      case '4':
+        this.pod4();
+        break;
+    }
+  },
+
   toSymbol() {
     switch(this.type()) {
       case PolygonType.SILENT: return 's';
@@ -724,7 +767,7 @@ function createMap(draw) {
 
   const colOffset = gridDetails.offsetX + gridDetails.hexSize;
   const colInterval = gridDetails.hexSize * 1.5;
-  for(let i = 0, j = colOffset; i < gridDetails.xpos.length; ++i, j+=colInterval) {
+  for (let i = 0, j = colOffset; i < gridDetails.xpos.length; ++i, j+=colInterval) {
     cols
       .text(gridDetails.xpos[i])
       .font({
@@ -794,7 +837,7 @@ function createMap(draw) {
       // TODO: Do not touch location.hash.
       // TODO: Create a Share modal. "Show" modal when clicked,
       //    and close via an 'x' button.
-      window.location.hash = gridDetails.toLink();
+      window.location.hash = gridDetails.toCode();
     });
   controls.move(0, gridDetails.footerTop);
 
